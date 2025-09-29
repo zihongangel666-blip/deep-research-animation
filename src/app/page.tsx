@@ -1,48 +1,43 @@
-import Link from "next/link";
+"use client";
+
+import MarkdownAnimator from "../components/MarkdownAnimator";
+import { useAuth } from "../lib/hooks/useAuth";
+import SignInWithEmail from "../components/SignInWithGoogle";
 
 export default function Home() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="min-h-screen grid place-items-center">
+        <div className="animate-pulse text-gray-500">Loading…</div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen grid place-items-center p-6">
+        <div className="space-y-4 text-center">
+          <h1 className="text-3xl font-bold">Sign in to start</h1>
+          <p className="text-gray-600 max-w-md">
+            You must be signed in with your email to paste your markdown report and create animations.
+          </p>
+          <div className="grid place-items-center">
+            <SignInWithEmail />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-center border p-4 font-mono rounded-md">
-          Get started by choosing a template path from the /paths/ folder.
-        </h2>
+    <main className="min-h-screen p-6">
+      <div className="max-w-5xl mx-auto pb-6">
+        <h1 className="text-4xl font-bold">Markdown Animation Editor</h1>
+        <p className="text-gray-600 pt-2">Paste a markdown report. Each heading gets a 16:9 editable animation canvas. Click a canvas to paste custom code.</p>
       </div>
-      <div>
-        <h1 className="text-6xl font-bold text-center">Make anything you imagine 🪄</h1>
-        <h2 className="text-2xl text-center font-light text-gray-500 pt-4">
-          This whole page will be replaced when you run your template path.
-        </h2>
-      </div>
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">AI Chat App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            An intelligent conversational app powered by AI models, featuring real-time responses
-            and seamless integration with Next.js and various AI providers.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">AI Image Generation App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            Create images from text prompts using AI, powered by the Replicate API and Next.js.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">Social Media App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            A feature-rich social platform with user profiles, posts, and interactions using
-            Firebase and Next.js.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">Voice Notes App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            A voice-based note-taking app with real-time transcription using Deepgram API, 
-            Firebase integration for storage, and a clean, simple interface built with Next.js.
-          </p>
-        </div>
-      </div>
+      <MarkdownAnimator />
     </main>
   );
 }
