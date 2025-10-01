@@ -97,8 +97,36 @@ Create an appropriate diagram type (flowchart, sequence, class, etc.) that best 
 
       if (!response.ok) throw new Error('Failed to generate diagram');
       
-      const data = await response.json();
-      const mermaidCode = data.message || data.content || '';
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      
+      let mermaidCode = '';
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('0:')) {
+            try {
+              const data = JSON.parse(line.slice(2));
+              if (data.type === 'text-delta' && data.textDelta) {
+                mermaidCode += data.textDelta;
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      }
+      
+      // Clean up the response - remove any markdown formatting
+      mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
       
       setSections(prev => prev.map(s => 
         s.id === sectionId ? { ...s, mermaidCode } : s
@@ -136,32 +164,26 @@ Create an appropriate diagram type (flowchart, sequence, class, etc.) that best 
               <h3 className="text-2xl font-bold">{idx + 1}. {s.heading}</h3>
               <p className="whitespace-pre-wrap text-gray-700">{s.body}</p>
               
-              {/* Mermaid Diagram Section */}
+              {/* Unified Animation & Mermaid Section */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-600">Mermaid Diagram</label>
+                  <label className="text-sm font-medium text-gray-600">Interactive Content</label>
                   <button
                     onClick={() => generateMermaidDiagram(s.id)}
                     disabled={generatingMermaid === s.id}
                     className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {generatingMermaid === s.id ? 'Generating...' : 'Generate with AI'}
+                    {generatingMermaid === s.id ? 'Generating...' : 'Generate Mermaid with AI'}
                   </button>
                 </div>
                 
-                {s.mermaidCode ? (
-                  <MermaidCanvas mermaidCode={s.mermaidCode} />
-                ) : (
-                  <div className="w-full h-48 bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">Click "Generate with AI" to create a Mermaid diagram</span>
-                  </div>
-                )}
+                <UnifiedCanvas
+                  mermaidCode={s.mermaidCode}
+                  animationCode={s.code}
+                  onEditAnimation={() => handleOpenEditor(s.id)}
+                  isGenerating={generatingMermaid === s.id}
+                />
               </div>
-
-              <AnimationCanvas
-                code={s.code}
-                onClick={() => handleOpenEditor(s.id)}
-              />
             </div>
           ))}
         </div>
@@ -201,27 +223,21 @@ const defaultBlankSnippet = `<!doctype html>
   </body>
 </html>`;
 
-function AnimationCanvas({ code, onClick }: { code?: string; onClick: () => void }) {
-  const srcDoc = useMemo(() => code ?? defaultBlankSnippet, [code]);
-  return (
-    <div className="relative w-full bg-black/5 rounded border border-gray-300 overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
-      <iframe
-        sandbox="allow-scripts allow-same-origin"
-        className="w-full h-full"
-        srcDoc={srcDoc}
-      />
-      <button
-        onClick={onClick}
-        className="absolute inset-0 hover:bg-black/5 active:bg-black/10 focus:outline-none"
-        aria-label="Edit animation"
-      />
-    </div>
-  );
-}
 
-function MermaidCanvas({ mermaidCode }: { mermaidCode: string }) {
+function UnifiedCanvas({ 
+  mermaidCode, 
+  animationCode, 
+  onEditAnimation, 
+  isGenerating 
+}: { 
+  mermaidCode?: string; 
+  animationCode?: string; 
+  onEditAnimation: () => void; 
+  isGenerating: boolean;
+}) {
   const srcDoc = useMemo(() => {
-    return `<!doctype html>
+    if (mermaidCode) {
+      return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -252,14 +268,54 @@ ${mermaidCode}
     </script>
   </body>
 </html>`;
-  }, [mermaidCode]);
+    } else if (animationCode) {
+      return animationCode;
+    } else {
+      return defaultBlankSnippet;
+    }
+  }, [mermaidCode, animationCode]);
 
   return (
-    <div className="relative w-full bg-white rounded border border-gray-300 overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+    <div className="relative w-full bg-black/5 rounded border border-gray-300 overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
       <iframe
         sandbox="allow-scripts allow-same-origin"
         className="w-full h-full"
         srcDoc={srcDoc}
+      />
+      
+      {/* Overlay for editing and generating */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {isGenerating ? (
+          <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+            <span className="text-sm text-gray-700">Generating Mermaid diagram...</span>
+          </div>
+        ) : !mermaidCode && !animationCode ? (
+          <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center">
+            <p className="text-sm text-gray-600 mb-3">Click "Generate Mermaid with AI" to create a diagram</p>
+            <p className="text-xs text-gray-500">or click anywhere to edit animation code</p>
+          </div>
+        ) : !mermaidCode ? (
+          <button
+            onClick={onEditAnimation}
+            className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-colors"
+          >
+            <span className="text-sm text-gray-700">Click to edit animation code</span>
+          </button>
+        ) : (
+          <button
+            onClick={onEditAnimation}
+            className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-colors opacity-0 hover:opacity-100"
+          >
+            <span className="text-sm text-gray-700">Click to edit animation code</span>
+          </button>
+        )}
+      </div>
+      
+      {/* Click handler for editing */}
+      <button
+        onClick={onEditAnimation}
+        className="absolute inset-0 hover:bg-black/5 active:bg-black/10 focus:outline-none"
+        aria-label="Edit content"
       />
     </div>
   );
