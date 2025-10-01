@@ -78,88 +78,111 @@ export default function MarkdownAnimator() {
     setGeneratingMermaid(sectionId);
     
     try {
-      // Create a Mermaid diagram based on the actual section content
+      // First, create a meaningful summary of the content
       const content = section.body.toLowerCase();
-      let mermaidCode = '';
+      let summary = '';
       
-      // Analyze content to determine appropriate diagram type and structure
+      // Extract key concepts and create meaningful summaries
       if (content.includes('workflow') || content.includes('process') || content.includes('step')) {
-        // Process/Workflow diagram
-        const steps = section.body.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 6);
-        mermaidCode = `flowchart TD
-    A[${section.heading}]`;
-        
-        steps.forEach((step, index) => {
-          const cleanStep = step.trim().substring(0, 30) + (step.length > 30 ? '...' : '');
-          mermaidCode += `\n    A --> B${index + 1}[${cleanStep}]`;
+        // Process/Workflow - extract key steps
+        const sentences = section.body.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        const steps = sentences.slice(0, 4).map(s => {
+          const clean = s.trim();
+          if (clean.includes('first') || clean.includes('initially')) return 'Initial Setup';
+          if (clean.includes('then') || clean.includes('next')) return 'Main Process';
+          if (clean.includes('finally') || clean.includes('complete')) return 'Finalization';
+          if (clean.includes('evaluate') || clean.includes('assess')) return 'Evaluation';
+          return clean.substring(0, 20) + (clean.length > 20 ? '...' : '');
         });
         
-        mermaidCode += `\n    B${steps.length} --> C[Complete]
-    
-    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px
-    style C fill:#c8e6c9,stroke:#22c55e,stroke-width:3px`;
-        
-        for (let i = 1; i <= steps.length; i++) {
-          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
-        }
+        summary = `flowchart TD
+    A[${section.heading}]`;
+        steps.forEach((step, index) => {
+          summary += `\n    A --> B${index + 1}[${step}]`;
+        });
+        summary += `\n    B${steps.length} --> C[Complete]`;
         
       } else if (content.includes('component') || content.includes('system') || content.includes('architecture')) {
-        // System/Architecture diagram
-        const parts = section.body.split(/[.!?]+/).filter(s => s.trim().length > 8).slice(0, 5);
-        mermaidCode = `graph TB
-    A[${section.heading}]`;
-        
-        parts.forEach((part, index) => {
-          const cleanPart = part.trim().substring(0, 25) + (part.length > 25 ? '...' : '');
-          mermaidCode += `\n    A --- B${index + 1}[${cleanPart}]`;
+        // System/Architecture - extract main components
+        const sentences = section.body.split(/[.!?]+/).filter(s => s.trim().length > 15);
+        const components = sentences.slice(0, 4).map(s => {
+          const clean = s.trim();
+          if (clean.includes('hardware')) return 'Hardware';
+          if (clean.includes('software')) return 'Software';
+          if (clean.includes('interface')) return 'Interface';
+          if (clean.includes('data')) return 'Data Layer';
+          if (clean.includes('security')) return 'Security';
+          if (clean.includes('performance')) return 'Performance';
+          return clean.substring(0, 15) + (clean.length > 15 ? '...' : '');
         });
         
-        mermaidCode += `\n    
-    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
-        
-        for (let i = 1; i <= parts.length; i++) {
-          mermaidCode += `\n    style B${i} fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px`;
-        }
+        summary = `graph TB
+    A[${section.heading}]`;
+        components.forEach((comp, index) => {
+          summary += `\n    A --- B${index + 1}[${comp}]`;
+        });
         
       } else if (content.includes('compare') || content.includes('versus') || content.includes('difference')) {
-        // Comparison diagram
-        const concepts = section.body.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 4);
-        mermaidCode = `graph LR
-    A[${section.heading}]`;
-        
-        concepts.forEach((concept, index) => {
-          const cleanConcept = concept.trim().substring(0, 20) + (concept.length > 20 ? '...' : '');
-          mermaidCode += `\n    A --> B${index + 1}[${cleanConcept}]`;
+        // Comparison - extract comparison points
+        const sentences = section.body.split(/[.!?]+/).filter(s => s.trim().length > 15);
+        const points = sentences.slice(0, 3).map(s => {
+          const clean = s.trim();
+          if (clean.includes('advantage') || clean.includes('benefit')) return 'Advantages';
+          if (clean.includes('disadvantage') || clean.includes('limitation')) return 'Limitations';
+          if (clean.includes('difference') || clean.includes('contrast')) return 'Key Differences';
+          return clean.substring(0, 15) + (clean.length > 15 ? '...' : '');
         });
         
-        mermaidCode += `\n    
-    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
-        
-        for (let i = 1; i <= concepts.length; i++) {
-          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
-        }
+        summary = `graph LR
+    A[${section.heading}]`;
+        points.forEach((point, index) => {
+          summary += `\n    A --> B${index + 1}[${point}]`;
+        });
         
       } else {
-        // Default hierarchical diagram
-        const keyPoints = section.body.split(/[.!?]+/).filter(s => s.trim().length > 15).slice(0, 4);
-        mermaidCode = `flowchart TD
-    A[${section.heading}]`;
-        
-        keyPoints.forEach((point, index) => {
-          const cleanPoint = point.trim().substring(0, 35) + (point.length > 35 ? '...' : '');
-          mermaidCode += `\n    A --> B${index + 1}[${cleanPoint}]`;
+        // Default - extract main concepts
+        const sentences = section.body.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        const concepts = sentences.slice(0, 3).map(s => {
+          const clean = s.trim();
+          // Extract meaningful concepts
+          if (clean.includes('important') || clean.includes('key')) return 'Key Points';
+          if (clean.includes('benefit') || clean.includes('advantage')) return 'Benefits';
+          if (clean.includes('challenge') || clean.includes('difficulty')) return 'Challenges';
+          if (clean.includes('solution') || clean.includes('approach')) return 'Solutions';
+          if (clean.includes('requirement') || clean.includes('need')) return 'Requirements';
+          if (clean.includes('implementation') || clean.includes('deploy')) return 'Implementation';
+          return clean.substring(0, 20) + (clean.length > 20 ? '...' : '');
         });
         
-        mermaidCode += `\n    
+        summary = `flowchart TD
+    A[${section.heading}]`;
+        concepts.forEach((concept, index) => {
+          summary += `\n    A --> B${index + 1}[${concept}]`;
+        });
+      }
+      
+      // Add styling
+      summary += `\n    
     style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
-        
-        for (let i = 1; i <= keyPoints.length; i++) {
-          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
+      
+      // Add node styling based on content type
+      if (content.includes('workflow') || content.includes('process')) {
+        summary += `\n    style C fill:#c8e6c9,stroke:#22c55e,stroke-width:3px`;
+        for (let i = 1; i <= 4; i++) {
+          summary += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
+        }
+      } else if (content.includes('component') || content.includes('system')) {
+        for (let i = 1; i <= 4; i++) {
+          summary += `\n    style B${i} fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px`;
+        }
+      } else {
+        for (let i = 1; i <= 3; i++) {
+          summary += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
         }
       }
       
       setSections(prev => prev.map(s => 
-        s.id === sectionId ? { ...s, mermaidCode } : s
+        s.id === sectionId ? { ...s, mermaidCode: summary } : s
       ));
     } catch (error) {
       console.error('Error generating Mermaid diagram:', error);
@@ -176,48 +199,94 @@ export default function MarkdownAnimator() {
     setGeneratingMermaid(sectionId);
     
     try {
-      // Generate a simple animation based on the section content
+      // Generate customized animation based on section content
+      const content = section.body.toLowerCase();
+      const heading = section.heading;
+      
+      // Extract key points from the content
+      const sentences = section.body.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      const keyPoints = sentences.slice(0, 3).map(s => {
+        const clean = s.trim();
+        if (clean.length > 50) {
+          return clean.substring(0, 50) + '...';
+        }
+        return clean;
+      });
+      
+      // Determine animation theme based on content
+      let theme = 'default';
+      let bgGradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      let cardColor = 'rgba(255,255,255,0.1)';
+      
+      if (content.includes('workflow') || content.includes('process')) {
+        theme = 'workflow';
+        bgGradient = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)';
+        cardColor = 'rgba(79, 172, 254, 0.2)';
+      } else if (content.includes('system') || content.includes('architecture')) {
+        theme = 'system';
+        bgGradient = 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)';
+        cardColor = 'rgba(250, 112, 154, 0.2)';
+      } else if (content.includes('optimization') || content.includes('performance')) {
+        theme = 'optimization';
+        bgGradient = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
+        cardColor = 'rgba(168, 237, 234, 0.2)';
+      } else if (content.includes('analysis') || content.includes('research')) {
+        theme = 'analysis';
+        bgGradient = 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)';
+        cardColor = 'rgba(255, 236, 210, 0.2)';
+      }
+      
       const animationCode = `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${section.heading}</title>
+    <title>${heading}</title>
     <style>
       * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: system-ui, -apple-system, sans-serif; }
-      .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
-      .title { font-size: 2.5rem; font-weight: bold; margin-bottom: 2rem; text-align: center; }
-      .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; margin: 1rem; border: 1px solid rgba(255,255,255,0.2); }
-      .floating { animation: float 3s ease-in-out infinite; }
-      .pulse { animation: pulse 2s ease-in-out infinite; }
-      .slide-in { animation: slideIn 1s ease-out; }
-      @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
-      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-      @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+      html, body { margin: 0; height: 100%; background: ${bgGradient}; font-family: system-ui, -apple-system, sans-serif; }
+      .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; padding: 20px; }
+      .title { font-size: 2.5rem; font-weight: bold; margin-bottom: 2rem; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+      .card { background: ${cardColor}; backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; margin: 1rem; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+      .key-points { list-style: none; padding: 0; }
+      .key-points li { margin: 1rem 0; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 10px; border-left: 4px solid rgba(255,255,255,0.5); }
+      .floating { animation: float 4s ease-in-out infinite; }
+      .fade-in { animation: fadeIn 2s ease-out; }
+      .slide-up { animation: slideUp 1.5s ease-out; }
+      @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1 class="title floating">${section.heading}</h1>
-      <div class="card pulse">
-        <h3>Key Points</h3>
-        <ul>
-          <li>Interactive content</li>
-          <li>Auto-generated</li>
-          <li>Responsive design</li>
+      <h1 class="title floating">${heading}</h1>
+      <div class="card fade-in">
+        <h3 style="margin-top: 0; color: rgba(255,255,255,0.9);">Key Insights</h3>
+        <ul class="key-points">
+          ${keyPoints.map(point => `<li class="slide-up">${point}</li>`).join('')}
         </ul>
       </div>
     </div>
     <script>
-      // Add some interactive effects
+      // Smooth interactive effects without popping
       document.addEventListener('mousemove', (e) => {
         const cards = document.querySelectorAll('.card');
         cards.forEach(card => {
           const rect = card.getBoundingClientRect();
           const x = e.clientX - rect.left - rect.width / 2;
           const y = e.clientY - rect.top - rect.height / 2;
-          card.style.transform = \`perspective(1000px) rotateY(\${x * 0.05}deg) rotateX(\${-y * 0.05}deg)\`;
+          const rotateX = (y / rect.height - 0.5) * 10;
+          const rotateY = (x / rect.width - 0.5) * -10;
+          card.style.transform = \`perspective(1000px) rotateX(\${rotateX}deg) rotateY(\${rotateY}deg) translateZ(10px)\`;
+        });
+      });
+      
+      // Reset transform on mouse leave
+      document.addEventListener('mouseleave', () => {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+          card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
         });
       });
     </script>
@@ -496,7 +565,7 @@ ${mermaidCode}
             <p className="text-xs text-gray-500 mt-3">Click either button to get started</p>
           </div>
         ) : (
-          <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center opacity-0 hover:opacity-100 transition-opacity">
+          <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center">
             <div className="flex flex-col gap-3">
               <div className="flex gap-2 justify-center">
                 <button
