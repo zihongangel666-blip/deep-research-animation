@@ -102,6 +102,74 @@ export default function MarkdownAnimator() {
     }
   }, [sections]);
 
+  const generateAnimation = useCallback(async (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    setGeneratingMermaid(sectionId);
+    
+    try {
+      // Generate a simple animation based on the section content
+      const animationCode = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Generated Animation</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: system-ui, -apple-system, sans-serif; }
+      .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
+      .title { font-size: 2.5rem; font-weight: bold; margin-bottom: 1rem; text-align: center; }
+      .subtitle { font-size: 1.2rem; opacity: 0.8; margin-bottom: 2rem; text-align: center; }
+      .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; margin: 1rem; border: 1px solid rgba(255,255,255,0.2); }
+      .floating { animation: float 3s ease-in-out infinite; }
+      .pulse { animation: pulse 2s ease-in-out infinite; }
+      .slide-in { animation: slideIn 1s ease-out; }
+      @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title floating">${section.heading}</h1>
+      <p class="subtitle slide-in">Generated Animation</p>
+      <div class="card pulse">
+        <h3>Key Points</h3>
+        <ul>
+          <li>Interactive content</li>
+          <li>Auto-generated</li>
+          <li>Responsive design</li>
+        </ul>
+      </div>
+    </div>
+    <script>
+      // Add some interactive effects
+      document.addEventListener('mousemove', (e) => {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left - rect.width / 2;
+          const y = e.clientY - rect.top - rect.height / 2;
+          card.style.transform = \`perspective(1000px) rotateY(\${x * 0.05}deg) rotateX(\${-y * 0.05}deg)\`;
+        });
+      });
+    </script>
+  </body>
+</html>`;
+      
+      setSections(prev => prev.map(s => 
+        s.id === sectionId ? { ...s, code: animationCode } : s
+      ));
+    } catch (error) {
+      console.error('Error generating animation:', error);
+      alert('Failed to generate animation. Please try again.');
+    } finally {
+      setGeneratingMermaid(null);
+    }
+  }, [sections]);
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
       <div className="space-y-2">
@@ -129,30 +197,12 @@ export default function MarkdownAnimator() {
               
               {/* Unified Animation & Mermaid Section */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-600">Interactive Content</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => generateMermaidDiagram(s.id)}
-                      disabled={generatingMermaid === s.id}
-                      className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {generatingMermaid === s.id ? 'Generating...' : 'Generate Mermaid'}
-                    </button>
-                    <button
-                      onClick={() => handleOpenEditor(s.id)}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Edit Animation
-                    </button>
-                  </div>
-                </div>
-                
                 <UnifiedCanvas
                   mermaidCode={s.mermaidCode}
                   animationCode={s.code}
                   onEditAnimation={() => handleOpenEditor(s.id)}
                   onGenerateMermaid={() => generateMermaidDiagram(s.id)}
+                  onGenerateAnimation={() => generateAnimation(s.id)}
                   isGenerating={generatingMermaid === s.id}
                 />
               </div>
@@ -201,14 +251,20 @@ function UnifiedCanvas({
   animationCode, 
   onEditAnimation, 
   onGenerateMermaid,
+  onGenerateAnimation,
   isGenerating 
 }: { 
   mermaidCode?: string; 
   animationCode?: string; 
   onEditAnimation: () => void; 
   onGenerateMermaid: () => void;
+  onGenerateAnimation: () => void;
   isGenerating: boolean;
 }) {
+  const [showChat, setShowChat] = useState(false);
+  const [chatType, setChatType] = useState<'animation' | 'mermaid'>('animation');
+  const [chatMessage, setChatMessage] = useState('');
+
   const srcDoc = useMemo(() => {
     if (mermaidCode) {
       return `<!doctype html>
@@ -249,6 +305,16 @@ ${mermaidCode}
     }
   }, [mermaidCode, animationCode]);
 
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatMessage.trim()) return;
+    
+    // For now, just close chat and show a message
+    alert(`Chat message: "${chatMessage}" - This would be processed by AI to modify the ${chatType}`);
+    setChatMessage('');
+    setShowChat(false);
+  };
+
   return (
     <div className="relative w-full bg-gray-50 rounded border-2 border-dashed border-gray-300 overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
       <iframe
@@ -257,12 +323,12 @@ ${mermaidCode}
         srcDoc={srcDoc}
       />
       
-      {/* Centered overlay with choice buttons */}
+      {/* Stable overlay - no flashing */}
       <div className="absolute inset-0 flex items-center justify-center">
         {isGenerating ? (
           <div className="bg-white/95 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center">
             <div className="animate-spin w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-            <span className="text-sm text-gray-700">Generating Mermaid diagram...</span>
+            <span className="text-sm text-gray-700">Generating content...</span>
           </div>
         ) : !mermaidCode && !animationCode ? (
           <div className="bg-white/95 backdrop-blur-sm px-8 py-6 rounded-lg shadow-lg text-center">
@@ -275,36 +341,25 @@ ${mermaidCode}
                 Generate Mermaid Diagram
               </button>
               <button
-                onClick={onEditAnimation}
+                onClick={onGenerateAnimation}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Create Animation
+                Generate Animation
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-3">Click either button to get started</p>
           </div>
-        ) : !mermaidCode ? (
-          <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center">
-            <p className="text-sm text-gray-600 mb-3">Animation code loaded</p>
-            <button
-              onClick={onEditAnimation}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-            >
-              Edit Animation
-            </button>
-          </div>
         ) : (
           <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center opacity-0 hover:opacity-100 transition-opacity">
-            <p className="text-sm text-gray-600 mb-3">Mermaid diagram loaded</p>
             <div className="flex gap-2 justify-center">
               <button
-                onClick={onGenerateMermaid}
+                onClick={() => { setChatType('mermaid'); setShowChat(true); }}
                 className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
               >
-                Regenerate
+                Edit Mermaid
               </button>
               <button
-                onClick={onEditAnimation}
+                onClick={() => { setChatType('animation'); setShowChat(true); }}
                 className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
               >
                 Edit Animation
@@ -313,6 +368,46 @@ ${mermaidCode}
           </div>
         )}
       </div>
+
+      {/* Chat Modal */}
+      {showChat && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold">Edit {chatType === 'mermaid' ? 'Mermaid Diagram' : 'Animation'}</h3>
+              <button 
+                onClick={() => setShowChat(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleChatSubmit} className="p-4">
+              <textarea
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                placeholder={`Describe how you want to modify the ${chatType}...`}
+                className="w-full h-32 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowChat(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Apply Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
