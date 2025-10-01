@@ -78,54 +78,88 @@ export default function MarkdownAnimator() {
     setGeneratingMermaid(sectionId);
     
     try {
-      // Create a detailed Mermaid diagram based on section content
-      const testMermaidCode = `flowchart TD
-    A[${section.heading}] --> B[Analysis Phase]
-    A --> C[Planning Phase]
-    A --> D[Implementation Phase]
-    
-    B --> B1[Identify Requirements]
-    B --> B2[Assess Current State]
-    B --> B3[Define Objectives]
-    
-    C --> C1[Create Strategy]
-    C --> C2[Resource Allocation]
-    C --> C3[Timeline Planning]
-    
-    D --> D1[Execute Plan]
-    D --> D2[Monitor Progress]
-    D --> D3[Quality Assurance]
-    
-    B1 --> E[Integration]
-    B2 --> E
-    B3 --> E
-    C1 --> E
-    C2 --> E
-    C3 --> E
-    D1 --> E
-    D2 --> E
-    D3 --> E
-    
-    E --> F[Final Result]
-    E --> G[Documentation]
-    E --> H[Review & Feedback]
-    
-    F --> I[Success Metrics]
-    G --> I
-    H --> I
+      // Create a Mermaid diagram based on the actual section content
+      const content = section.body.toLowerCase();
+      let mermaidCode = '';
+      
+      // Analyze content to determine appropriate diagram type and structure
+      if (content.includes('workflow') || content.includes('process') || content.includes('step')) {
+        // Process/Workflow diagram
+        const steps = section.body.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 6);
+        mermaidCode = `flowchart TD
+    A[${section.heading}]`;
+        
+        steps.forEach((step, index) => {
+          const cleanStep = step.trim().substring(0, 30) + (step.length > 30 ? '...' : '');
+          mermaidCode += `\n    A --> B${index + 1}[${cleanStep}]`;
+        });
+        
+        mermaidCode += `\n    B${steps.length} --> C[Complete]
     
     style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px
-    style B fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    style C fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    style D fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    style E fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px
-    style F fill:#c8e6c9,stroke:#22c55e,stroke-width:3px
-    style G fill:#c8e6c9,stroke:#22c55e,stroke-width:2px
-    style H fill:#c8e6c9,stroke:#22c55e,stroke-width:2px
-    style I fill:#fecaca,stroke:#ef4444,stroke-width:2px`;
+    style C fill:#c8e6c9,stroke:#22c55e,stroke-width:3px`;
+        
+        for (let i = 1; i <= steps.length; i++) {
+          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
+        }
+        
+      } else if (content.includes('component') || content.includes('system') || content.includes('architecture')) {
+        // System/Architecture diagram
+        const parts = section.body.split(/[.!?]+/).filter(s => s.trim().length > 8).slice(0, 5);
+        mermaidCode = `graph TB
+    A[${section.heading}]`;
+        
+        parts.forEach((part, index) => {
+          const cleanPart = part.trim().substring(0, 25) + (part.length > 25 ? '...' : '');
+          mermaidCode += `\n    A --- B${index + 1}[${cleanPart}]`;
+        });
+        
+        mermaidCode += `\n    
+    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
+        
+        for (let i = 1; i <= parts.length; i++) {
+          mermaidCode += `\n    style B${i} fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px`;
+        }
+        
+      } else if (content.includes('compare') || content.includes('versus') || content.includes('difference')) {
+        // Comparison diagram
+        const concepts = section.body.split(/[.!?]+/).filter(s => s.trim().length > 10).slice(0, 4);
+        mermaidCode = `graph LR
+    A[${section.heading}]`;
+        
+        concepts.forEach((concept, index) => {
+          const cleanConcept = concept.trim().substring(0, 20) + (concept.length > 20 ? '...' : '');
+          mermaidCode += `\n    A --> B${index + 1}[${cleanConcept}]`;
+        });
+        
+        mermaidCode += `\n    
+    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
+        
+        for (let i = 1; i <= concepts.length; i++) {
+          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
+        }
+        
+      } else {
+        // Default hierarchical diagram
+        const keyPoints = section.body.split(/[.!?]+/).filter(s => s.trim().length > 15).slice(0, 4);
+        mermaidCode = `flowchart TD
+    A[${section.heading}]`;
+        
+        keyPoints.forEach((point, index) => {
+          const cleanPoint = point.trim().substring(0, 35) + (point.length > 35 ? '...' : '');
+          mermaidCode += `\n    A --> B${index + 1}[${cleanPoint}]`;
+        });
+        
+        mermaidCode += `\n    
+    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px`;
+        
+        for (let i = 1; i <= keyPoints.length; i++) {
+          mermaidCode += `\n    style B${i} fill:#fef3c7,stroke:#f59e0b,stroke-width:2px`;
+        }
+      }
       
       setSections(prev => prev.map(s => 
-        s.id === sectionId ? { ...s, mermaidCode: testMermaidCode } : s
+        s.id === sectionId ? { ...s, mermaidCode } : s
       ));
     } catch (error) {
       console.error('Error generating Mermaid diagram:', error);
