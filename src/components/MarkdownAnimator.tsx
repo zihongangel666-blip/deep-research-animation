@@ -7,6 +7,7 @@ type Section = {
   heading: string;
   body: string;
   code?: string; // custom HTML/JS pasted by user
+  mermaidCode?: string; // AI-generated Mermaid diagram
 };
 
 // Very small markdown splitter: finds lines starting with # as section headings
@@ -51,6 +52,7 @@ export default function MarkdownAnimator() {
   const [sections, setSections] = useState<Section[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [tempCode, setTempCode] = useState<string>("");
+  const [generatingMermaid, setGeneratingMermaid] = useState<string | null>(null);
 
   const handleParse = useCallback(() => {
     const parsed = splitMarkdownIntoSections(rawMarkdown);
@@ -68,6 +70,46 @@ export default function MarkdownAnimator() {
     setSections(prev => prev.map(s => s.id === editingSectionId ? { ...s, code: tempCode } : s));
     setEditingSectionId(null);
   }, [editingSectionId, tempCode]);
+
+  const generateMermaidDiagram = useCallback(async (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    setGeneratingMermaid(sectionId);
+    
+    try {
+      const response = await fetch('/api/openai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: `Generate a Mermaid diagram for this content. Only return the Mermaid code, no explanations or markdown formatting:
+
+Heading: ${section.heading}
+
+Content: ${section.body}
+
+Create an appropriate diagram type (flowchart, sequence, class, etc.) that best represents this information.`
+          }]
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to generate diagram');
+      
+      const data = await response.json();
+      const mermaidCode = data.message || data.content || '';
+      
+      setSections(prev => prev.map(s => 
+        s.id === sectionId ? { ...s, mermaidCode } : s
+      ));
+    } catch (error) {
+      console.error('Error generating Mermaid diagram:', error);
+      alert('Failed to generate diagram. Please try again.');
+    } finally {
+      setGeneratingMermaid(null);
+    }
+  }, [sections]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
@@ -93,6 +135,29 @@ export default function MarkdownAnimator() {
             <div key={s.id} className="space-y-3">
               <h3 className="text-2xl font-bold">{idx + 1}. {s.heading}</h3>
               <p className="whitespace-pre-wrap text-gray-700">{s.body}</p>
+              
+              {/* Mermaid Diagram Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-600">Mermaid Diagram</label>
+                  <button
+                    onClick={() => generateMermaidDiagram(s.id)}
+                    disabled={generatingMermaid === s.id}
+                    className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingMermaid === s.id ? 'Generating...' : 'Generate with AI'}
+                  </button>
+                </div>
+                
+                {s.mermaidCode ? (
+                  <MermaidCanvas mermaidCode={s.mermaidCode} />
+                ) : (
+                  <div className="w-full h-48 bg-gray-50 border-2 border-dashed border-gray-300 rounded flex items-center justify-center">
+                    <span className="text-gray-500 text-sm">Click "Generate with AI" to create a Mermaid diagram</span>
+                  </div>
+                )}
+              </div>
+
               <AnimationCanvas
                 code={s.code}
                 onClick={() => handleOpenEditor(s.id)}
@@ -149,6 +214,52 @@ function AnimationCanvas({ code, onClick }: { code?: string; onClick: () => void
         onClick={onClick}
         className="absolute inset-0 hover:bg-black/5 active:bg-black/10 focus:outline-none"
         aria-label="Edit animation"
+      />
+    </div>
+  );
+}
+
+function MermaidCanvas({ mermaidCode }: { mermaidCode: string }) {
+  const srcDoc = useMemo(() => {
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mermaid Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+      .container { padding: 20px; max-width: 100%; margin: 0 auto; }
+      .mermaid { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="mermaid">
+${mermaidCode}
+      </div>
+    </div>
+    <script>
+      mermaid.initialize({ 
+        startOnLoad: true,
+        theme: 'default',
+        flowchart: { useMaxWidth: true, htmlLabels: true },
+        sequence: { useMaxWidth: true },
+        class: { useMaxWidth: true }
+      });
+    </script>
+  </body>
+</html>`;
+  }, [mermaidCode]);
+
+  return (
+    <div className="relative w-full bg-white rounded border border-gray-300 overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+      <iframe
+        sandbox="allow-scripts allow-same-origin"
+        className="w-full h-full"
+        srcDoc={srcDoc}
       />
     </div>
   );
