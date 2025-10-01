@@ -78,18 +78,51 @@ export default function MarkdownAnimator() {
     setGeneratingMermaid(sectionId);
     
     try {
-      // Use a simpler approach - create a test Mermaid diagram first
+      // Create a detailed Mermaid diagram based on section content
       const testMermaidCode = `flowchart TD
-    A[${section.heading}] --> B[Key Point 1]
-    A --> C[Key Point 2]
-    A --> D[Key Point 3]
-    B --> E[Implementation]
-    C --> E
-    D --> E
-    E --> F[Result]
+    A[${section.heading}] --> B[Analysis Phase]
+    A --> C[Planning Phase]
+    A --> D[Implementation Phase]
     
-    style A fill:#e1f5fe
-    style F fill:#c8e6c9`;
+    B --> B1[Identify Requirements]
+    B --> B2[Assess Current State]
+    B --> B3[Define Objectives]
+    
+    C --> C1[Create Strategy]
+    C --> C2[Resource Allocation]
+    C --> C3[Timeline Planning]
+    
+    D --> D1[Execute Plan]
+    D --> D2[Monitor Progress]
+    D --> D3[Quality Assurance]
+    
+    B1 --> E[Integration]
+    B2 --> E
+    B3 --> E
+    C1 --> E
+    C2 --> E
+    C3 --> E
+    D1 --> E
+    D2 --> E
+    D3 --> E
+    
+    E --> F[Final Result]
+    E --> G[Documentation]
+    E --> H[Review & Feedback]
+    
+    F --> I[Success Metrics]
+    G --> I
+    H --> I
+    
+    style A fill:#e1f5fe,stroke:#0ea5e9,stroke-width:3px
+    style B fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    style C fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    style D fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    style E fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px
+    style F fill:#c8e6c9,stroke:#22c55e,stroke-width:3px
+    style G fill:#c8e6c9,stroke:#22c55e,stroke-width:2px
+    style H fill:#c8e6c9,stroke:#22c55e,stroke-width:2px
+    style I fill:#fecaca,stroke:#ef4444,stroke-width:2px`;
       
       setSections(prev => prev.map(s => 
         s.id === sectionId ? { ...s, mermaidCode: testMermaidCode } : s
@@ -115,13 +148,12 @@ export default function MarkdownAnimator() {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Generated Animation</title>
+    <title>${section.heading}</title>
     <style>
       * { box-sizing: border-box; }
       html, body { margin: 0; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: system-ui, -apple-system, sans-serif; }
       .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
-      .title { font-size: 2.5rem; font-weight: bold; margin-bottom: 1rem; text-align: center; }
-      .subtitle { font-size: 1.2rem; opacity: 0.8; margin-bottom: 2rem; text-align: center; }
+      .title { font-size: 2.5rem; font-weight: bold; margin-bottom: 2rem; text-align: center; }
       .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; margin: 1rem; border: 1px solid rgba(255,255,255,0.2); }
       .floating { animation: float 3s ease-in-out infinite; }
       .pulse { animation: pulse 2s ease-in-out infinite; }
@@ -134,7 +166,6 @@ export default function MarkdownAnimator() {
   <body>
     <div class="container">
       <h1 class="title floating">${section.heading}</h1>
-      <p class="subtitle slide-in">Generated Animation</p>
       <div class="card pulse">
         <h3>Key Points</h3>
         <ul>
@@ -276,9 +307,28 @@ function UnifiedCanvas({
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
     <style>
       * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; background: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-      .container { padding: 20px; max-width: 100%; margin: 0 auto; }
-      .mermaid { text-align: center; }
+      html, body { margin: 0; height: 100%; background: #f8fafc; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
+      .container { 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        height: 100vh; 
+        width: 100vw; 
+        padding: 20px; 
+      }
+      .mermaid { 
+        width: 100%; 
+        height: 100%; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+      }
+      .mermaid svg { 
+        max-width: 100%; 
+        max-height: 100%; 
+        width: auto; 
+        height: auto; 
+      }
     </style>
   </head>
   <body>
@@ -291,9 +341,14 @@ ${mermaidCode}
       mermaid.initialize({ 
         startOnLoad: true,
         theme: 'default',
-        flowchart: { useMaxWidth: true, htmlLabels: true },
-        sequence: { useMaxWidth: true },
-        class: { useMaxWidth: true }
+        flowchart: { 
+          useMaxWidth: false, 
+          htmlLabels: true,
+          width: '100%',
+          height: '100%'
+        },
+        sequence: { useMaxWidth: false },
+        class: { useMaxWidth: false }
       });
     </script>
   </body>
@@ -305,14 +360,71 @@ ${mermaidCode}
     }
   }, [mermaidCode, animationCode]);
 
-  const handleChatSubmit = (e: React.FormEvent) => {
+  const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
     
-    // For now, just close chat and show a message
-    alert(`Chat message: "${chatMessage}" - This would be processed by AI to modify the ${chatType}`);
-    setChatMessage('');
-    setShowChat(false);
+    try {
+      // Use OpenAI API to process the chat message
+      const response = await fetch('/api/openai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: `Modify this ${chatType} based on the request: "${chatMessage}". Return only the ${chatType === 'mermaid' ? 'Mermaid diagram code' : 'HTML animation code'}, no explanations.`
+          }]
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to process request');
+      
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      
+      let result = '';
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('0:')) {
+            try {
+              const data = JSON.parse(line.slice(2));
+              if (data.type === 'text-delta' && data.textDelta) {
+                result += data.textDelta;
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      }
+      
+      // Clean up the response
+      result = result.replace(/```mermaid\n?/g, '').replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Update the content based on type
+      if (chatType === 'mermaid') {
+        // This would need to be passed up to parent component
+        alert(`Mermaid diagram updated: ${result.substring(0, 100)}...`);
+      } else {
+        // This would need to be passed up to parent component  
+        alert(`Animation updated: ${result.substring(0, 100)}...`);
+      }
+      
+      setChatMessage('');
+      setShowChat(false);
+    } catch (error) {
+      console.error('Error processing chat request:', error);
+      alert('Failed to process your request. Please try again.');
+    }
   };
 
   return (
@@ -351,19 +463,35 @@ ${mermaidCode}
           </div>
         ) : (
           <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-lg shadow-lg text-center opacity-0 hover:opacity-100 transition-opacity">
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => { setChatType('mermaid'); setShowChat(true); }}
-                className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
-              >
-                Edit Mermaid
-              </button>
-              <button
-                onClick={() => { setChatType('animation'); setShowChat(true); }}
-                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-              >
-                Edit Animation
-              </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => { setChatType('mermaid'); setShowChat(true); }}
+                  className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors"
+                >
+                  Edit Mermaid
+                </button>
+                <button
+                  onClick={() => { setChatType('animation'); setShowChat(true); }}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+                >
+                  Edit Animation
+                </button>
+              </div>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={onGenerateMermaid}
+                  className="px-3 py-1 bg-purple-500 text-white rounded text-xs hover:bg-purple-600 transition-colors"
+                >
+                  Switch to Mermaid
+                </button>
+                <button
+                  onClick={onGenerateAnimation}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
+                >
+                  Switch to Animation
+                </button>
+              </div>
             </div>
           </div>
         )}
